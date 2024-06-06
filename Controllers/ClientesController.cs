@@ -3,6 +3,7 @@ using APIBookstore.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Xml.Linq;
 
 
 namespace APIBookstore.Controllers
@@ -12,15 +13,21 @@ namespace APIBookstore.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly BookstoreContext Context;
+        private readonly ILogger<ClientesController> _logger;
 
-        public ClientesController(BookstoreContext context)
+        public ClientesController(BookstoreContext context, ILogger<ClientesController> logger)
         {
             Context = context;
+            _logger = logger;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cliente>>> GetAsync()
         {
+            _logger.LogInformation($"======== GET CLIENTES ============");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+
             var clientes = await Context.Clientes.ToListAsync();
 
             return (clientes is null) ? NotFound("Não há clientes cadastrados.") : Ok(clientes);
@@ -29,6 +36,10 @@ namespace APIBookstore.Controllers
         [HttpGet("Pedidos")]
         public async Task <ActionResult<IEnumerable<Cliente>>> GetPedidosAsync()
         {
+
+            _logger.LogInformation($"======== GET CLIENTES / PEDIDOS ============");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
             var clientesComPedidos = await Context.Clientes
                 .Include(x => x.Pedidos)
                 .Where(x => x.Pedidos.Any())
@@ -36,6 +47,10 @@ namespace APIBookstore.Controllers
 
             if (clientesComPedidos.Count == 0)
             {
+                _logger.LogInformation($"======== PEDIDOS INDISPONIVEIS ============");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+
                 return NotFound("Não há pedidos realizados.");
             }
 
@@ -45,6 +60,10 @@ namespace APIBookstore.Controllers
         [HttpGet("{id:int:min(1)}", Name = "ObterCliente")]
         public async Task <ActionResult<Cliente>> GetAsync(int id)
         {
+            _logger.LogInformation($"======== GET CLIENTES ID = {id} ============");
+
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
             var cliente = await Context.Clientes.SingleOrDefaultAsync(c => c.ClienteId == id);
 
             return (cliente == null) ? NotFound($"Não há nenhum cliente com o id = {id}") : Ok(cliente);
@@ -54,6 +73,10 @@ namespace APIBookstore.Controllers
 
         public async Task <ActionResult<Cliente>> GetAsync(string name)
         {
+            _logger.LogInformation($"======== GET CLIENTES NAME = {name} ============");
+
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
             var list = await Context.Clientes.ToListAsync();
 
             var clientes = list
@@ -65,16 +88,22 @@ namespace APIBookstore.Controllers
 
         [HttpPost]
         public ActionResult Post(Cliente cliente)
-        {   
+        {
+            
 
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                return BadRequest("Verifique os dados patrão");
+                _logger.LogInformation($"======== MODELO INVALIDO ============");
+                return BadRequest("Verifique os dados");
             }
 
             
             try 
             {
+
+                _logger.LogInformation($"======== CLIENTE CADASTRADO! ============");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
                 var validacaoDeDados = Context
                                         .Clientes
                                         .Any(c => c.Cpf.Equals(cliente.Cpf) || c.Email.Equals(cliente.Email));
@@ -99,8 +128,14 @@ namespace APIBookstore.Controllers
         [HttpPut]
         public ActionResult Put(int id, Cliente cliente) 
         {
+
+            _logger.LogInformation($"======== CLIENTE ATUALICADO! = {id} ============");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
             if (cliente == null || id != cliente.ClienteId)
             {
+                _logger.LogInformation($"======== CLIENTE COM PROBLEMA! = {id} ============");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
                 return BadRequest("Verifique os dados.");
             }
 
@@ -113,10 +148,14 @@ namespace APIBookstore.Controllers
         [HttpDelete]
         public ActionResult Delete(int id)
         {
+            _logger.LogInformation($"======== CLIENTE DELETADO, ID = {id} ============");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             var cliente = Context.Clientes.SingleOrDefault(x => x.ClienteId == id);
 
             if(cliente == null)
             {
+                _logger.LogInformation($"======== PROBLEMA COM ID DO CLIENTE ============");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
                 return BadRequest("Não podemos exluir, pois esse usuário não existe...");
             }
 

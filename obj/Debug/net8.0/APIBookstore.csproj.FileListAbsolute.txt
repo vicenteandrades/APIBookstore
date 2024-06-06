@@ -122,3 +122,4 @@ C:\Users\vicen\source\repos\APIBookstore\apibookstore\obj\Debug\net8.0\refint\AP
 C:\Users\vicen\source\repos\APIBookstore\apibookstore\obj\Debug\net8.0\APIBookstore.pdb
 C:\Users\vicen\source\repos\APIBookstore\apibookstore\obj\Debug\net8.0\APIBookstore.genruntimeconfig.cache
 C:\Users\vicen\source\repos\APIBookstore\apibookstore\obj\Debug\net8.0\ref\APIBookstore.dll
+C:\Users\vicen\source\repos\APIBookstore\APIBookstore\obj\Debug\net8.0\APIBookstore.sourcelink.json

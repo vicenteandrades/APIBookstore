@@ -3,6 +3,7 @@ using APIBookstore.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 
 namespace APIBookstore.Controllers
@@ -11,18 +12,25 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class CategoriasController : ControllerBase
     {
-        private readonly BookstoreContext Context;
+        private readonly BookstoreContext _context;
+        private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(BookstoreContext context)
+        public CategoriasController(BookstoreContext context, ILogger<CategoriasController> logger)
         {
-            Context = context;
+            _context = context;
+            _logger = logger;
         }
 
         [HttpGet("Produtos")]
 
         public async Task <ActionResult<IEnumerable<Categoria>>> GetAllProdutosAsync()
         {
-            var categorias = await Context.Categorias.Include(c => c.Produtos).ToListAsync();
+
+            _logger.LogInformation("=====  Get/ Categoria /Produtos =====");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+
+            var categorias = await _context.Categorias.Include(c => c.Produtos).ToListAsync();
 
             return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
         }
@@ -30,7 +38,10 @@ namespace APIBookstore.Controllers
         [HttpGet]
         public async Task <ActionResult<IEnumerable<Categoria>>> GetAsync()
         {
-            var categorias = await Context.Categorias.ToListAsync();
+            _logger.LogInformation("========= GET CATEGORIAS =========");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+            var categorias = await _context.Categorias.ToListAsync();
 
             return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
         }
@@ -38,7 +49,13 @@ namespace APIBookstore.Controllers
         [HttpGet("{id:int:min(1)}", Name = "ObterCategoria")]
         public async Task<ActionResult<Categoria>> GetAsync(int id)
         {
-            var produto = await Context.Categorias.SingleOrDefaultAsync(c => c.CategoriaId == id);
+
+            _logger.LogInformation("========= GET CATEGORIAS =========");
+            _logger.LogInformation($"========= ID = {id} =========");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+
+            var produto = await _context.Categorias.SingleOrDefaultAsync(c => c.CategoriaId == id);
 
             return (produto is null) ? NotFound($"Não uma categoria cadastrado com o id {id}") : Ok (produto);
         }
@@ -50,11 +67,17 @@ namespace APIBookstore.Controllers
             {
                 if (!ModelState.IsValid)
                 {
+                    _logger.LogInformation($"============== Model State INVALIDO ==============");
+                    _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
                     return BadRequest("Não podemos cadastrar uma categoria nula");
                 }
 
-                Context.Categorias.Add(categoria);
-                Context.SaveChanges();
+                _logger.LogInformation($"=====  Categoria Cadastrada!!! {categoria} =====");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+
+
+                _context.Categorias.Add(categoria);
+                _context.SaveChanges();
                 return CreatedAtRoute("ObterCategoria", new { id = categoria.CategoriaId }, categoria);
 
             } catch(Exception ex)
@@ -67,12 +90,16 @@ namespace APIBookstore.Controllers
         public ActionResult Put(int id, Categoria categoria)
         {
             if(categoria is null || categoria.CategoriaId != id)
+
             {
+                _logger.LogInformation($"=====  VERIFICAÇÂO INVALIDA =====");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
                 return NotFound("Verifique os dados");
             }
-
-            Context.Entry(categoria).State = EntityState.Modified;
-            Context.SaveChanges();
+            _logger.LogInformation($"=====  CATEGORIA ATUALIZADA =====");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _context.Entry(categoria).State = EntityState.Modified;
+            _context.SaveChanges();
 
             return Ok("Alterado com sucesso.");
         }
@@ -80,15 +107,18 @@ namespace APIBookstore.Controllers
         [HttpDelete]
         public ActionResult Delete(int id)
         {
-            var categoria = Context.Categorias.SingleOrDefault(c => c.CategoriaId == id);
+            var categoria = _context.Categorias.SingleOrDefault(c => c.CategoriaId == id);
 
             if(categoria is null)
             {
+                _logger.LogInformation($"=====  DELEÇÃO INVALIDA =====");
+                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
                 return NotFound("Não há essa categoria");
             }
-
-            Context.Categorias.Remove(categoria);
-            Context.SaveChanges();
+            _logger.LogInformation($"=====  DELEÇÂO DO ID {id} =====");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _context.Categorias.Remove(categoria);
+            _context.SaveChanges();
 
             return Ok($"A categoria ({categoria.Nome}) e id {id} foi deletada com sucesso!");
         }

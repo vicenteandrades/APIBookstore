@@ -35,14 +35,16 @@ namespace APIBookstore.Controllers
         }
 
         [HttpGet("Nome")]
-        public async Task <ActionResult<Produto>> GetProdutoNomeAsync(string nome)
+        
+        public async Task<ActionResult<Produto>> GetProdutoNomeAsync(string nome)
         {
             var list = await Context.Produtos.ToListAsync();
-            var produto = list
-                          .Where(x => x.Name.ToLower().Contains(nome.ToLower()))
-                          .ToList();
 
-            return (produto is null) ? NotFound("Não há produto cadastrado com esse nome") : Ok(produto);
+            var produtos = list
+                           .Where(x => x.Name.ToLower().Contains(nome.ToLower()))
+                           .ToList();
+
+            return (produtos.Count == 0) ? BadRequest($"Não há produto que contém o nome {nome}") : Ok(produtos);
         }
 
         [HttpPost]
