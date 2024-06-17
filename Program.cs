@@ -1,13 +1,18 @@
 using APIBookstore.Context;
+using APIBookstore.Filters;
 using APIBookstore.Logging;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
+using APIBookstore.Models;
+using APIBookstore.Repositories;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(config => config.Filters.Add<ApiFilterException>())
+
                 .AddJsonOptions(options => options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddControllers();
@@ -19,6 +24,12 @@ string mySqlConnection = builder.Configuration.GetConnectionString("DefaultConne
 builder.Services.AddDbContext<BookstoreContext>(options =>
     options.UseMySql(mySqlConnection, ServerVersion.AutoDetect(mySqlConnection))
 );
+
+builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>)  );
+builder.Services.AddScoped<CategoriaRepository>();
+builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<ClientRepository>();
+
 
 builder.Logging.AddProvider(new CustomLoggerProvider(new CustomLoggerProviderConfiguration
 {

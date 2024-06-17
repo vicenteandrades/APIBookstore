@@ -1,4 +1,6 @@
-﻿using APIBookstore.Validation;
+﻿
+
+using APIBookstore.Validation;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
+using APIBookstore.Repositories;
 
 namespace APIBookstore.Controllers
 {
@@ -11,25 +12,25 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class ProdutosController : ControllerBase
     {
-        private readonly BookstoreContext Context;
+        private readonly ProductRepository _repository;
 
-        public ProdutosController(BookstoreContext context)
+        public ProdutosController(ProductRepository repository)
         {
-            Context = context;
+            _repository = repository;
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Produto>> Get() 
+        public async Task <ActionResult<IEnumerable<Produto>> >Get() 
         {
-            var produtos = Context.Produtos.ToList();
+            var produtos = await _repository.GetAllAsync();
 
             return (produtos is null) ? NotFound("Não há produtos cadastradas") : Ok(produtos);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterProdutos")]
-        public ActionResult<Categoria> Get([FromRoute]int id)
+        public async Task<ActionResult<Produto>> Get([FromRoute]int id)
         {
-            var produto = Context.Produtos.SingleOrDefault(p => p.ProdutoId == id);
+            var produto = await _repository.GetByIdAsync(id);
 
             return (produto is null) ? NotFound($"Não uma produto cadastrado com o id {id}") : Ok(produto);
         }
@@ -38,13 +39,9 @@ namespace APIBookstore.Controllers
         
         public async Task<ActionResult<Produto>> GetProdutoNomeAsync(string nome)
         {
-            var list = await Context.Produtos.ToListAsync();
+            var produtos = await _repository.FindNameAsync(nome);
 
-            var produtos = list
-                           .Where(x => x.Name.ToLower().Contains(nome.ToLower()))
-                           .ToList();
-
-            return (produtos.Count == 0) ? BadRequest($"Não há produto que contém o nome {nome}") : Ok(produtos);
+            return (produtos is null) ? BadRequest($"Não há produto que contém o nome {nome}") : Ok(produtos);
         }
 
         [HttpPost]
@@ -55,8 +52,7 @@ namespace APIBookstore.Controllers
                 return BadRequest("Não podemos cadastrar um produto nulo");
             }
 
-            Context.Produtos.Add(produto);
-            Context.SaveChanges();
+            _repository.Create(produto);
             return CreatedAtRoute("ObterProdutos", new  { id = produto.ProdutoId}, produto);
         }
 
@@ -68,25 +64,24 @@ namespace APIBookstore.Controllers
                 return NotFound("Verifique os dados");
             }
 
-            Context.Entry(produto).State = EntityState.Modified;
-            Context.SaveChanges();
+            _repository.Update(produto);
 
             return Ok($"Produto com o id {id} atualizado.");
         }
 
         [HttpDelete]
-        public ActionResult Delete(int id) 
+        public ActionResult Delete(int id)
         {
-            var produto = Context.Produtos.SingleOrDefault(p => p.ProdutoId == id);
+            var produto = _repository.GetByIdAsync(id);
 
             if(produto is null)
             {
                 return NotFound($"Não podemos remover, pois não há nenhuma produto com o id {id}");
             }
-            Context.Produtos.Remove(produto);
-            Context.SaveChanges();
 
-            return Ok($"O produto {produto.Name} com o id {id} foi deletado com sucesso.");
+            _repository.Delete(id);
+
+            return Ok($"O produto com o id {id} foi deletado com sucesso.");
         }
 
 

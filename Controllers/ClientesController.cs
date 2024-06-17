@@ -1,9 +1,9 @@
-﻿using APIBookstore.Context;
-using APIBookstore.Models;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
+using APIBookstore.Models;
+using APIBookstore.Repositories;
 
 
 namespace APIBookstore.Controllers
@@ -12,12 +12,12 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class ClientesController : ControllerBase
     {
-        private readonly BookstoreContext Context;
+        private readonly ClientRepository _repository;
         private readonly ILogger<ClientesController> _logger;
 
-        public ClientesController(BookstoreContext context, ILogger<ClientesController> logger)
+        public ClientesController(ClientRepository repository, ILogger<ClientesController> logger)
         {
-            Context = context;
+            _repository = repository;
             _logger = logger;
         }
 
@@ -26,9 +26,10 @@ namespace APIBookstore.Controllers
         {
             _logger.LogInformation($"======== GET CLIENTES ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var clientes = await Context.Clientes.ToListAsync();
+            var clientes = await _repository.GetAllAsync();
 
             return (clientes is null) ? NotFound("Não há clientes cadastrados.") : Ok(clientes);
         }
@@ -39,51 +40,47 @@ namespace APIBookstore.Controllers
 
             _logger.LogInformation($"======== GET CLIENTES / PEDIDOS ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var clientesComPedidos = await Context.Clientes
-                .Include(x => x.Pedidos)
-                .Where(x => x.Pedidos.Any())
-                .ToListAsync();
 
-            if (clientesComPedidos.Count == 0)
+            var clientsWithOrder = await _repository.GetOrder();
+
+            if (clientsWithOrder is null)
             {
                 _logger.LogInformation($"======== PEDIDOS INDISPONIVEIS ============");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-
+                _logger.LogInformation($"Horário: {DateTime.Now}");
 
                 return NotFound("Não há pedidos realizados.");
             }
 
-            return Ok(clientesComPedidos);
+            return Ok(clientsWithOrder);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterCliente")]
         public async Task <ActionResult<Cliente>> GetAsync(int id)
         {
             _logger.LogInformation($"======== GET CLIENTES ID = {id} ============");
-
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var cliente = await Context.Clientes.SingleOrDefaultAsync(c => c.ClienteId == id);
+
+            var cliente = await _repository.GetByIdAsync(id);
 
             return (cliente == null) ? NotFound($"Não há nenhum cliente com o id = {id}") : Ok(cliente);
         }
 
         [HttpGet("{name}")]
 
-        public async Task <ActionResult<Cliente>> GetAsync(string name)
+        public async Task <ActionResult<Cliente>> GetAsyncName(string name)
         {
             _logger.LogInformation($"======== GET CLIENTES NAME = {name} ============");
-
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var list = await Context.Clientes.ToListAsync();
+            var clients = await _repository.FindNameAsync(name);
 
-            var clientes = list
-                           .Where(c => c.Nome.ToLower().Contains(name.ToLower()))
-                           .ToList();
-
-            return (clientes.Count == 0) ? BadRequest($"Não há nenhum cliente cadastrado com o nome ou sobrenome {name}") : Ok(clientes);
+            return (clients is null) ? BadRequest($"Não há nenhum cliente cadastrado com o nome ou sobrenome {name}") : Ok(clients);
         }
 
         [HttpPost]
@@ -94,35 +91,27 @@ namespace APIBookstore.Controllers
             if (!ModelState.IsValid)
             {
                 _logger.LogInformation($"======== MODELO INVALIDO ============");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
+
                 return BadRequest("Verifique os dados");
             }
 
-            
-            try 
+
+            _logger.LogInformation($"======== CLIENTE CADASTRADO! ============");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
+
+
+            var dataValidation = _repository.dataValidation(cliente);
+
+            if (dataValidation)
             {
-
-                _logger.LogInformation($"======== CLIENTE CADASTRADO! ============");
-                _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-
-                var validacaoDeDados = Context
-                                        .Clientes
-                                        .Any(c => c.Cpf.Equals(cliente.Cpf) || c.Email.Equals(cliente.Email));
-
-                if (validacaoDeDados)
-                {
-                    return BadRequest("Há um usuario cadastro, favor verifique os dados.");
-                }
-
-                Context.Clientes.Add(cliente);
-                Context.SaveChanges();
-
-                return CreatedAtRoute("ObterCliente", new { id = cliente.ClienteId }, cliente);
-
-            }catch(Exception ex)
-            {
-                Console.WriteLine($"Erro ao processar a requisição: {ex.Message}");
-                return StatusCode(500, "Erro ao processar a requisição. Tente novamente mais tarde.");
+                return BadRequest("Há um usuario cadastro, favor verifique os dados.");
             }
+
+            _repository.Create(cliente);
+
+            return CreatedAtRoute("ObterCliente", new { id = cliente.ClienteId }, cliente);
         }
 
         [HttpPut]
@@ -131,16 +120,18 @@ namespace APIBookstore.Controllers
 
             _logger.LogInformation($"======== CLIENTE ATUALICADO! = {id} ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
             if (cliente == null || id != cliente.ClienteId)
             {
                 _logger.LogInformation($"======== CLIENTE COM PROBLEMA! = {id} ============");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
+
                 return BadRequest("Verifique os dados.");
             }
 
-            Context.Entry(cliente).State = EntityState.Modified;
-            Context.SaveChanges();
+            _repository.Update(cliente);
 
             return Ok("Cliente modoficado!!!");
         }
@@ -150,19 +141,22 @@ namespace APIBookstore.Controllers
         {
             _logger.LogInformation($"======== CLIENTE DELETADO, ID = {id} ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-            var cliente = Context.Clientes.SingleOrDefault(x => x.ClienteId == id);
+            _logger.LogInformation($"Horário: {DateTime.Now}");
+
+            var cliente = _repository.GetByIdAsync(id);
 
             if(cliente == null)
             {
                 _logger.LogInformation($"======== PROBLEMA COM ID DO CLIENTE ============");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
+
                 return BadRequest("Não podemos exluir, pois esse usuário não existe...");
             }
 
-            Context.Clientes.Remove(cliente);
-            Context.SaveChanges();
+            _repository.Delete(id);
 
-            return Ok($"Cliente ({cliente.Nome}) com id = {id} removido!");
+            return Ok($"Cliente com id = {id} removido!");
         }
 
 

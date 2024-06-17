@@ -1,9 +1,11 @@
 ﻿using APIBookstore.Context;
 using APIBookstore.Models;
+using APIBookstore.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 
 namespace APIBookstore.Controllers
@@ -12,12 +14,12 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class CategoriasController : ControllerBase
     {
-        private readonly BookstoreContext _context;
+        private readonly CategoriaRepository _repository;
         private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(BookstoreContext context, ILogger<CategoriasController> logger)
+        public CategoriasController(CategoriaRepository repository, ILogger<CategoriasController> logger)
         {
-            _context = context;
+            _repository = repository;
             _logger = logger;
         }
 
@@ -28,34 +30,41 @@ namespace APIBookstore.Controllers
 
             _logger.LogInformation("=====  Get/ Categoria /Produtos =====");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var categorias = await _context.Categorias.Include(c => c.Produtos).ToListAsync();
+
+            var categorias = await _repository.GetProdutosDeCategoriaAsync();
 
             return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
         }
 
+
         [HttpGet]
-        public async Task <ActionResult<IEnumerable<Categoria>>> GetAsync()
+        public async Task <ActionResult<IEnumerable<Categoria>>> GetAsyncCategorias()
         {
             _logger.LogInformation("========= GET CATEGORIAS =========");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var categorias = await _context.Categorias.ToListAsync();
+
+            var categorias = await _repository.GetAllAsync();
 
             return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterCategoria")]
-        public async Task<ActionResult<Categoria>> GetAsync(int id)
+        public async Task<ActionResult<Categoria>> GetIdAsync(int id)
         {
 
             _logger.LogInformation("========= GET CATEGORIAS =========");
             _logger.LogInformation($"========= ID = {id} =========");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var produto = await _context.Categorias.SingleOrDefaultAsync(c => c.CategoriaId == id);
+
+            var produto = await _repository.GetByIdAsync(id);
 
             return (produto is null) ? NotFound($"Não uma categoria cadastrado com o id {id}") : Ok (produto);
         }
@@ -63,27 +72,23 @@ namespace APIBookstore.Controllers
         [HttpPost]
         public ActionResult Post(Categoria categoria)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                if (!ModelState.IsValid)
-                {
-                    _logger.LogInformation($"============== Model State INVALIDO ==============");
-                    _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-                    return BadRequest("Não podemos cadastrar uma categoria nula");
-                }
-
-                _logger.LogInformation($"=====  Categoria Cadastrada!!! {categoria} =====");
+                _logger.LogInformation($"============== Model State INVALIDO ==============");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
 
-
-                _context.Categorias.Add(categoria);
-                _context.SaveChanges();
-                return CreatedAtRoute("ObterCategoria", new { id = categoria.CategoriaId }, categoria);
-
-            } catch(Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Erro ao cadastrar categoria, favor verifique os dados");
+                return BadRequest("Não podemos cadastrar uma categoria nula");
             }
+
+            _logger.LogInformation($"=====  Categoria Cadastrada!!! {categoria} =====");
+            _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+            _logger.LogInformation($"Horário: {DateTime.Now}");
+
+
+            var categoriaCriada = _repository.Create(categoria);
+            
+            return CreatedAtRoute("ObterCategoria", new { id = categoriaCriada.CategoriaId }, categoriaCriada);
         }
 
         [HttpPut]
@@ -94,12 +99,15 @@ namespace APIBookstore.Controllers
             {
                 _logger.LogInformation($"=====  VERIFICAÇÂO INVALIDA =====");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
+
                 return NotFound("Verifique os dados");
             }
             _logger.LogInformation($"=====  CATEGORIA ATUALIZADA =====");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-            _context.Entry(categoria).State = EntityState.Modified;
-            _context.SaveChanges();
+            _logger.LogInformation($"Horário: {DateTime.Now}");
+
+            _repository.Update(categoria);
 
             return Ok("Alterado com sucesso.");
         }
@@ -107,20 +115,23 @@ namespace APIBookstore.Controllers
         [HttpDelete]
         public ActionResult Delete(int id)
         {
-            var categoria = _context.Categorias.SingleOrDefault(c => c.CategoriaId == id);
+            var categoria = _repository.GetByIdAsync(id);
 
             if(categoria is null)
             {
                 _logger.LogInformation($"=====  DELEÇÃO INVALIDA =====");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
+                _logger.LogInformation($"Horário: {DateTime.Now}");
+
                 return NotFound("Não há essa categoria");
             }
             _logger.LogInformation($"=====  DELEÇÂO DO ID {id} =====");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
-            _context.Categorias.Remove(categoria);
-            _context.SaveChanges();
+            _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            return Ok($"A categoria ({categoria.Nome}) e id {id} foi deletada com sucesso!");
+            _repository.Delete(id);
+
+            return Ok($"A categoria id {id} foi deletada com sucesso!");
         }
 
     }

@@ -1,21 +1,22 @@
 ﻿using APIBookstore.Context;
 using APIBookstore.Models;
+using APIBookstore.Repositories;
 
 namespace APIBookstore.Services
 {
     public class PedidoService
     {
-        private readonly BookstoreContext _context;
+        private readonly ProductRepository _repositoryProduct;
 
-        public PedidoService(BookstoreContext context)
+        public PedidoService(ProductRepository repositoryProduct)
         {
-            _context = context;
+            _repositoryProduct = repositoryProduct;
         }
 
         public double CalcularTotal(Pedido pedido)
         {
-            var produto = _context.Produtos.Find(pedido.ProdutoId);
-            if (produto != null)
+            var produto = _repositoryProduct.GetProduct(pedido.ProdutoId);
+            if (produto is not null)
             {
                 return pedido.Quantidade * produto.Preco;
             }

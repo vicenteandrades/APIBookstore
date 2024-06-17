@@ -1,5 +1,6 @@
 ﻿using APIBookstore.Context;
 using APIBookstore.Models;
+using APIBookstore.Repositories;
 using APIBookstore.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,30 +13,32 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class PedidosController : ControllerBase
     {
-        private readonly BookstoreContext Context;
+        private readonly IBaseRepository<Pedido> _repository;
+        private readonly ProductRepository _repositoryProduct;
 
-        public PedidosController(BookstoreContext context)
+        public PedidosController(IBaseRepository<Pedido> repository, ProductRepository repositoryProduct)
         {
-            Context = context;
+            _repository = repository;
+            _repositoryProduct = repositoryProduct;
         }
 
 
         [HttpGet]
         public async Task< ActionResult<IEnumerable<Pedido>>> GetAsync()
         {
-            var pedidos = await Context.Pedidos.ToListAsync();
+            var pedidos = await _repository.GetAllAsync();
 
-            return (pedidos.Count == 0) ? NotFound("Não há pedidos cadastrados") : Ok(pedidos);
+            return (pedidos is null) ? NotFound("Não há pedidos cadastrados") : Ok(pedidos);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterPedido")]
-        public ActionResult<Pedido> Get(int id)
+        public async Task <ActionResult<Pedido>> Get(int id)
         {
-            var pedido = Context.Pedidos.SingleOrDefault(p => p.PedidoId == id);
+            var pedido = await _repository.GetByIdAsync(id);
 
             return (pedido is null) ? NotFound("Não há pedidos cadastrados") : Ok(pedido);
         }
-
+        
         [HttpPost]
         public ActionResult Post(Pedido pedido)
         {
@@ -44,7 +47,7 @@ namespace APIBookstore.Controllers
                 return BadRequest("O pedido não pode ser nulo");
             }
 
-            var produto = Context.Produtos.Find(pedido.ProdutoId);
+            var produto = _repositoryProduct.GetProduct(pedido.ProdutoId);
 
             if (produto is null)
             {
@@ -56,21 +59,18 @@ namespace APIBookstore.Controllers
                 return BadRequest("Não possuímos a quantidade de itens suficiente");
             }
 
-            var pedidoService = new PedidoService(Context);
+            var pedidoService = new PedidoService(_repositoryProduct);
             pedido.Total = pedidoService.CalcularTotal(pedido);
 
             produto.Quantidade -= pedido.Quantidade;
-            Context.Produtos.Update(produto);
-            
+            _repositoryProduct.Update(produto);
 
-            Context.Pedidos.Add(pedido);
-            Context.SaveChanges();
+
+            _repository.Create(pedido);
 
             return CreatedAtRoute("ObterPedido", new { id = pedido.PedidoId }, pedido);
-
-
         }
-
+        
         [HttpPut]
         public ActionResult Put(int id, Pedido pedido)
         {
@@ -79,8 +79,7 @@ namespace APIBookstore.Controllers
                 return BadRequest("Os ids do pedido tem que ser iguais");
             }
 
-            Context.Entry(pedido).State = EntityState.Modified;
-            Context.SaveChanges();
+            _repository.Update(pedido);
 
             return Ok("Pedido Alterado com sucesso");
         }
@@ -88,15 +87,14 @@ namespace APIBookstore.Controllers
         [HttpDelete]
         public ActionResult Delete(int id)
         {
-            var pedido = Context.Pedidos.SingleOrDefault(x => x.PedidoId == id);
+            var pedido = _repository.GetByIdAsync(id);
 
             if (pedido == null)
             {
                 return BadRequest("Não podemos exluir, pois esse pedido não existe...");
             }
 
-            Context.Pedidos.Remove(pedido);
-            Context.SaveChanges();
+            _repository.Delete(id);
 
             return Ok($"Pedido com id = {id} removido!");
         }
