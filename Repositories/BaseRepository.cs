@@ -23,7 +23,6 @@ namespace APIBookstore.Repositories
         public T Create(T entity)
         {
             _context.Set<T>().Add(entity);
-            _context.SaveChanges();
             return entity;
         }
 
@@ -32,21 +31,17 @@ namespace APIBookstore.Repositories
             if (entity is not null)
             {
                 _context.Set<T>().Update(entity);
-                _context.SaveChanges();
                 return true;
             }
 
             return false;
         }
 
-        public bool Delete(int id)
+        public bool Delete(T entity)
         {
-            var entity = _context.Set<T>().Find(id);
-
             if (entity is not null)
             {
                 _context.Set<T>().Remove(entity);
-                _context.SaveChanges();
                 return true;
             }
 

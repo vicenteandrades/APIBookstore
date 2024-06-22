@@ -5,7 +5,7 @@ namespace APIBookstore.Filters
 {
     public class ApiFilterException : IExceptionFilter
     {
-        private readonly ILogger<ApiFilterException>  _logger;
+        private readonly ILogger<ApiFilterException> _logger;
 
         public ApiFilterException(ILogger<ApiFilterException> logger)
         {

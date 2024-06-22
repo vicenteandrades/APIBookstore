@@ -4,10 +4,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace APIBookstore.Repositories
 {
-    public class CategoriaRepository : BaseRepository<Categoria>, ICategoryBaseRepository
+    public class CategoryRepository : BaseRepository<Categoria>, ICategoryRepository
     {
-        public CategoriaRepository(BookstoreContext context) : base(context)
+        public CategoryRepository(BookstoreContext context) : base(context)
         {
+        }
+
+        public Categoria GetCategoria(int id)
+        {
+            return _context.Categorias.Find(id);
         }
 
         public async Task<IEnumerable<Categoria>> GetProdutosDeCategoriaAsync()

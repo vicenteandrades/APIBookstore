@@ -12,7 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers(config => config.Filters.Add<ApiFilterException>())
-
                 .AddJsonOptions(options => options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddControllers();
@@ -26,9 +25,12 @@ builder.Services.AddDbContext<BookstoreContext>(options =>
 );
 
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>)  );
-builder.Services.AddScoped<CategoriaRepository>();
+builder.Services.AddScoped<CategoryRepository>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddScoped<ClientRepository>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<UnitOfWork>();
 
 
 builder.Logging.AddProvider(new CustomLoggerProvider(new CustomLoggerProviderConfiguration

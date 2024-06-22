@@ -2,8 +2,9 @@
 
 namespace APIBookstore.Repositories
 {
-    public interface ICategoryBaseRepository : IBaseRepository<Categoria>
+    public interface ICategoryRepository : IBaseRepository<Categoria>
     {
         Task <IEnumerable<Categoria>> GetProdutosDeCategoriaAsync();
+        Categoria GetCategoria(int id);
     }
 }

@@ -30,4 +30,9 @@ public class ClientRepository : BaseRepository<Cliente>, IClientRepository
     {
         return _context.Clientes.Any(c => c.Cpf.Equals(client.Cpf) || c.Email.Equals(client.Email));
     }
+
+    public Cliente GetCliente(int id)
+    {
+        return _context.Clientes.Find(id);
+    }
 }

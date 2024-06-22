@@ -12,12 +12,12 @@ namespace APIBookstore.Controllers
     [ApiController]
     public class ClientesController : ControllerBase
     {
-        private readonly ClientRepository _repository;
+        private readonly UnitOfWork _unitOfWork;
         private readonly ILogger<ClientesController> _logger;
 
-        public ClientesController(ClientRepository repository, ILogger<ClientesController> logger)
+        public ClientesController(UnitOfWork unitOfWork, ILogger<ClientesController> logger)
         {
-            _repository = repository;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -29,7 +29,7 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var clientes = await _repository.GetAllAsync();
+            var clientes = await _unitOfWork.ClientRepository.GetAllAsync();
 
             return (clientes is null) ? NotFound("Não há clientes cadastrados.") : Ok(clientes);
         }
@@ -43,7 +43,7 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var clientsWithOrder = await _repository.GetOrder();
+            var clientsWithOrder = await _unitOfWork.ClientRepository.GetOrder();
 
             if (clientsWithOrder is null)
             {
@@ -65,7 +65,7 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var cliente = await _repository.GetByIdAsync(id);
+            var cliente = await _unitOfWork.ClientRepository.GetByIdAsync(id);
 
             return (cliente == null) ? NotFound($"Não há nenhum cliente com o id = {id}") : Ok(cliente);
         }
@@ -78,7 +78,7 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var clients = await _repository.FindNameAsync(name);
+            var clients = await _unitOfWork.ClientRepository.FindNameAsync(name);
 
             return (clients is null) ? BadRequest($"Não há nenhum cliente cadastrado com o nome ou sobrenome {name}") : Ok(clients);
         }
@@ -102,14 +102,15 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
 
-            var dataValidation = _repository.dataValidation(cliente);
+            var dataValidation = _unitOfWork.ClientRepository.dataValidation(cliente);
 
             if (dataValidation)
             {
                 return BadRequest("Há um usuario cadastro, favor verifique os dados.");
             }
 
-            _repository.Create(cliente);
+            _unitOfWork.ClientRepository.Create(cliente);
+            _unitOfWork.Commit();
 
             return CreatedAtRoute("ObterCliente", new { id = cliente.ClienteId }, cliente);
         }
@@ -131,7 +132,8 @@ namespace APIBookstore.Controllers
                 return BadRequest("Verifique os dados.");
             }
 
-            _repository.Update(cliente);
+            _unitOfWork.ClientRepository.Update(cliente);
+            _unitOfWork.Commit();
 
             return Ok("Cliente modoficado!!!");
         }
@@ -143,7 +145,7 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
-            var cliente = _repository.GetByIdAsync(id);
+            var cliente = _unitOfWork.ClientRepository.GetCliente(id);
 
             if(cliente == null)
             {
@@ -154,7 +156,8 @@ namespace APIBookstore.Controllers
                 return BadRequest("Não podemos exluir, pois esse usuário não existe...");
             }
 
-            _repository.Delete(id);
+            _unitOfWork.ClientRepository.Delete(cliente);
+            _unitOfWork.Commit();
 
             return Ok($"Cliente com id = {id} removido!");
         }
