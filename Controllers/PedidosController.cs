@@ -30,63 +30,70 @@ namespace APIBookstore.Controllers
         public async Task< ActionResult<IEnumerable<PedidoDTO>>> GetAsync()
         {
             var order = await _unitOfWork.OrderRepository.GetAllAsync();
-            
-            return (order is null) ? NotFound("Não há pedidos cadastrados") : Ok(order);
+            var orderDto = _mapper.Map<IEnumerable<PedidoDTO>>(order);
+            return (orderDto.Any()) ? Ok(orderDto): NotFound("Não há pedidos cadastrados");
         }
 
-        [HttpGet("{id:int:min(1)}", Name = "ObterPedido")]
-        public async Task <ActionResult<Pedido>> Get(int id)
+        [HttpGet("{id:int:min(1)}", Name = "GetOrder")]
+        public async Task <ActionResult<PedidoDTO>> Get(int id)
         {
-            var pedido = await _unitOfWork.OrderRepository.GetByIdAsync(id);
-
-            return (pedido is null) ? NotFound("Não há pedidos cadastrados") : Ok(pedido);
+            var order = await _unitOfWork.OrderRepository.GetByIdAsync(id);
+            var orderDto = _mapper.Map<PedidoDTO>(order);
+            
+            return (orderDto is null) ? NotFound("Não há pedidos cadastrados") : Ok(orderDto);
         }
         
         [HttpPost]
-        public ActionResult Post(Pedido pedido)
+        public ActionResult Post(PedidoDTO orderDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest("O pedido não pode ser nulo");
             }
-            var produto = _unitOfWork.ProductRepository.GetProduct(pedido.ProdutoId);
+            var product = _unitOfWork.ProductRepository.GetProduct(orderDto.ProdutoId);
 
-            if (produto is null)
+            if (product is null)
             {
                 return NotFound("Produto não encontrado");
             }
 
-            if (pedido.Quantidade > produto.Quantidade)
+            if (orderDto.Quantidade > product.Quantidade)
             {
                 return BadRequest("Não possuímos a quantidade de itens suficiente");
             }
 
+            var order = _mapper.Map<Pedido>(orderDto);
+
             var pedidoService = new PedidoService(_repositoryProduct);
-            pedido.Total = pedidoService.CalcularTotal(pedido);
-            if (pedido.Situacao.Equals("Aprovado") || pedido.Situacao.Equals("Aproved"))
+            order.Total = pedidoService.CalcularTotal(order);
+            if (orderDto.Situacao.Equals("Aprovado") || orderDto.Situacao.Equals("Aproved"))
             {
-                produto.Quantidade -= pedido.Quantidade;
-                _unitOfWork.ProductRepository.Update(produto);
+                product.Quantidade -= orderDto.Quantidade;
+                _unitOfWork.ProductRepository.Update(product);
                 
             }
 
 
-            _unitOfWork.OrderRepository.Create(pedido);
+            var orderCreated = _unitOfWork.OrderRepository.Create(order);
 
             _unitOfWork.Commit();
 
-            return CreatedAtRoute("ObterPedido", new { id = pedido.PedidoId }, pedido);
+            var orderCreatedDto = _mapper.Map<PedidoDTO>(orderCreated);
+            
+            return CreatedAtRoute("GetOrder", new { id = orderCreatedDto.PedidoId }, orderCreatedDto);
         }
         
         [HttpPut]
-        public ActionResult Put(int id, Pedido pedido)
+        public ActionResult Put(int id, PedidoDTO orderDto)
         {
-            if(id != pedido.PedidoId)
+            if(id != orderDto.PedidoId)
             {
                 return BadRequest("Os ids do pedido tem que ser iguais");
             }
 
-            _unitOfWork.OrderRepository.Update(pedido);
+            var order = _mapper.Map<Pedido>(orderDto);
+
+            _unitOfWork.OrderRepository.Update(order);
             _unitOfWork.Commit();
 
             return Ok("Pedido Alterado com sucesso");
