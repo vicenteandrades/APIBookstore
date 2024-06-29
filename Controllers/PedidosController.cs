@@ -1,7 +1,9 @@
 ﻿using APIBookstore.Context;
+using APIBookstore.DTOs;
 using APIBookstore.Models;
 using APIBookstore.Repositories;
 using APIBookstore.Services;
+using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,20 +16,22 @@ namespace APIBookstore.Controllers
     public class PedidosController : ControllerBase
     {
         private readonly UnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
         private readonly ProductRepository _repositoryProduct;
-        public PedidosController(UnitOfWork unitOfWork, ProductRepository repositoryProduct)
+        public PedidosController(UnitOfWork unitOfWork,IMapper mapper ,ProductRepository repositoryProduct)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
             _repositoryProduct = repositoryProduct;
         }
 
 
         [HttpGet]
-        public async Task< ActionResult<IEnumerable<Pedido>>> GetAsync()
+        public async Task< ActionResult<IEnumerable<PedidoDTO>>> GetAsync()
         {
-            var pedidos = await _unitOfWork.OrderRepository.GetAllAsync();
-
-            return (pedidos is null) ? NotFound("Não há pedidos cadastrados") : Ok(pedidos);
+            var order = await _unitOfWork.OrderRepository.GetAllAsync();
+            
+            return (order is null) ? NotFound("Não há pedidos cadastrados") : Ok(order);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterPedido")]
@@ -59,9 +63,12 @@ namespace APIBookstore.Controllers
 
             var pedidoService = new PedidoService(_repositoryProduct);
             pedido.Total = pedidoService.CalcularTotal(pedido);
-
-            produto.Quantidade -= pedido.Quantidade;
-            _unitOfWork.ProductRepository.Update(produto);
+            if (pedido.Situacao.Equals("Aprovado") || pedido.Situacao.Equals("Aproved"))
+            {
+                produto.Quantidade -= pedido.Quantidade;
+                _unitOfWork.ProductRepository.Update(produto);
+                
+            }
 
 
             _unitOfWork.OrderRepository.Create(pedido);

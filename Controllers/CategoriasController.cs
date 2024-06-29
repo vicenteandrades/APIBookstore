@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using APIBookstore.DTOs;
+using APIBookstore.DTOs.Mappings;
 
 
 namespace APIBookstore.Controllers
@@ -25,36 +27,37 @@ namespace APIBookstore.Controllers
 
         [HttpGet("Produtos")]
 
-        public async Task <ActionResult<IEnumerable<Categoria>>> GetAllProdutosAsync()
+        public async Task <ActionResult<IEnumerable<CategoriaDTO>>> GetAllProdutosAsync()
         {
 
             _logger.LogInformation("=====  Get/ Categoria /Produtos =====");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
-
-
-
+            
             var categorias = await _unitOfWork.CategoryRepository.GetProdutosDeCategoriaAsync();
 
-            return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
+            var categoriasDto = CategoriaMappingExtensions.ToCategoriaDtoList(categorias);
+
+            return (categoriasDto is null) ? NotFound("Não há categorias cadastradas") : Ok(categoriasDto);
         }
 
 
         [HttpGet]
-        public async Task <ActionResult<IEnumerable<Categoria>>> GetAsyncCategorias()
+        public async Task <ActionResult<IEnumerable<CategoriaDTO>>> GetAsyncCategorias()
         {
             _logger.LogInformation("========= GET CATEGORIAS =========");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
-
-
+            
             var categorias = await _unitOfWork.CategoryRepository.GetAllAsync();
 
-            return (categorias is null) ? NotFound("Não há categorias cadastradas") : Ok(categorias);
+            var categoriasDto = CategoriaMappingExtensions.ToCategoriaDtoList(categorias);
+
+            return (categoriasDto is null) ? NotFound("Não há categorias cadastradas") : Ok(categoriasDto);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterCategoria")]
-        public async Task<ActionResult<Categoria>> GetIdAsync(int id)
+        public async Task<ActionResult<CategoriaDTO>> GetIdAsync(int id)
         {
 
             _logger.LogInformation("========= GET CATEGORIAS =========");
@@ -62,15 +65,15 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
+            var categoria = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
 
+            var categoriaDTO = CategoriaMappingExtensions.ToCategoriaDTO(categoria);
 
-            var produto = await _unitOfWork.CategoryRepository.GetByIdAsync(id);
-
-            return (produto is null) ? NotFound($"Não uma categoria cadastrado com o id {id}") : Ok (produto);
+            return (categoriaDTO is null) ? NotFound($"Não uma categoria cadastrado com o id {id}") : Ok (categoriaDTO);
         }
 
         [HttpPost]
-        public ActionResult Post(Categoria categoria)
+        public ActionResult Post(CategoriaDTO categoriaDto)
         {
             if (!ModelState.IsValid)
             {
@@ -81,21 +84,24 @@ namespace APIBookstore.Controllers
                 return BadRequest("Não podemos cadastrar uma categoria nula");
             }
 
-            _logger.LogInformation($"=====  Categoria Cadastrada!!! {categoria} =====");
+            _logger.LogInformation($"=====  Categoria Cadastrada!!! {categoriaDto} =====");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
-
+            var categoria = CategoriaMappingExtensions.ToCategoria(categoriaDto);
+            
             var categoriaCriada = _unitOfWork.CategoryRepository.Create(categoria);
             _unitOfWork.Commit();
+
+            var categoriaCriadaDto = CategoriaMappingExtensions.ToCategoriaDTO(categoriaCriada);
             
-            return CreatedAtRoute("ObterCategoria", new { id = categoriaCriada.CategoriaId }, categoriaCriada);
+            return CreatedAtRoute("ObterCategoria", new { id = categoriaCriadaDto.CategoriaId }, categoriaCriadaDto);
         }
 
         [HttpPut]
-        public ActionResult Put(int id, Categoria categoria)
+        public ActionResult Put(int id, CategoriaDTO categoriaDto)
         {
-            if(categoria is null || categoria.CategoriaId != id)
+            if(categoriaDto is null || categoriaDto.CategoriaId != id)
 
             {
                 _logger.LogInformation($"=====  VERIFICAÇÂO INVALIDA =====");
@@ -108,6 +114,8 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
+            var categoria = CategoriaMappingExtensions.ToCategoria(categoriaDto);
+            
             _unitOfWork.CategoryRepository.Update(categoria);
             _unitOfWork.Commit();
 

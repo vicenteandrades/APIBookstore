@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
+using APIBookstore.DTOs;
 using APIBookstore.Models;
 using APIBookstore.Repositories;
+using AutoMapper;
 
 
 namespace APIBookstore.Controllers
@@ -13,16 +15,18 @@ namespace APIBookstore.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly UnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
         private readonly ILogger<ClientesController> _logger;
 
-        public ClientesController(UnitOfWork unitOfWork, ILogger<ClientesController> logger)
+        public ClientesController(UnitOfWork unitOfWork, IMapper mapper ,ILogger<ClientesController> logger)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
             _logger = logger;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cliente>>> GetAsync()
+        public async Task<ActionResult<IEnumerable<ClienteDTO>>> GetAsync()
         {
             _logger.LogInformation($"======== GET CLIENTES ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
@@ -31,11 +35,13 @@ namespace APIBookstore.Controllers
 
             var clientes = await _unitOfWork.ClientRepository.GetAllAsync();
 
-            return (clientes is null) ? NotFound("Não há clientes cadastrados.") : Ok(clientes);
+            var clientesDto = _mapper.Map<IEnumerable<ClienteDTO>>(clientes);
+
+            return (clientesDto.Any() ) ? Ok(clientes) : NotFound("Não há clientes cadastrados.");
         }
 
         [HttpGet("Pedidos")]
-        public async Task <ActionResult<IEnumerable<Cliente>>> GetPedidosAsync()
+        public async Task <ActionResult<IEnumerable<ClienteDTO>>> GetPedidosAsync()
         {
 
             _logger.LogInformation($"======== GET CLIENTES / PEDIDOS ============");
@@ -54,11 +60,13 @@ namespace APIBookstore.Controllers
                 return NotFound("Não há pedidos realizados.");
             }
 
-            return Ok(clientsWithOrder);
+            var clientsWithOrderDto = _mapper.Map<IEnumerable<ClienteDTO>>(clientsWithOrder);
+
+            return Ok(clientsWithOrderDto);
         }
 
         [HttpGet("{id:int:min(1)}", Name = "ObterCliente")]
-        public async Task <ActionResult<Cliente>> GetAsync(int id)
+        public async Task <ActionResult<ClienteDTO>> GetAsync(int id)
         {
             _logger.LogInformation($"======== GET CLIENTES ID = {id} ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
@@ -67,12 +75,14 @@ namespace APIBookstore.Controllers
 
             var cliente = await _unitOfWork.ClientRepository.GetByIdAsync(id);
 
-            return (cliente == null) ? NotFound($"Não há nenhum cliente com o id = {id}") : Ok(cliente);
+            var clienteDto = _mapper.Map<ClienteDTO>(cliente);
+
+            return (clienteDto is null) ? NotFound($"Não há nenhum cliente com o id = {id}") : Ok(clienteDto);
         }
 
         [HttpGet("{name}")]
 
-        public async Task <ActionResult<Cliente>> GetAsyncName(string name)
+        public async Task <ActionResult<ClienteDTO>> GetAsyncName(string name)
         {
             _logger.LogInformation($"======== GET CLIENTES NAME = {name} ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
@@ -80,11 +90,13 @@ namespace APIBookstore.Controllers
 
             var clients = await _unitOfWork.ClientRepository.FindNameAsync(name);
 
-            return (clients is null) ? BadRequest($"Não há nenhum cliente cadastrado com o nome ou sobrenome {name}") : Ok(clients);
+            var clientsDto = _mapper.Map<CategoriaDTO>(clients);
+
+            return (clientsDto is null) ? BadRequest($"Não há nenhum cliente cadastrado com o nome ou sobrenome {name}") : Ok(clientsDto);
         }
 
         [HttpPost]
-        public ActionResult Post(Cliente cliente)
+        public ActionResult Post(ClienteDTO clientDto)
         {
             
 
@@ -101,29 +113,31 @@ namespace APIBookstore.Controllers
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
 
-
-            var dataValidation = _unitOfWork.ClientRepository.dataValidation(cliente);
-
+            var client = _mapper.Map<Cliente>(clientDto);
+            var dataValidation = _unitOfWork.ClientRepository.dataValidation(client);
+            
             if (dataValidation)
             {
                 return BadRequest("Há um usuario cadastro, favor verifique os dados.");
             }
 
-            _unitOfWork.ClientRepository.Create(cliente);
+            var clientCreated = _unitOfWork.ClientRepository.Create(client);
             _unitOfWork.Commit();
+            
+            var clientDtoCreated = _mapper.Map<ClienteDTO>(clientCreated);
 
-            return CreatedAtRoute("ObterCliente", new { id = cliente.ClienteId }, cliente);
+            return CreatedAtRoute("ObterCliente", new { id = clientDtoCreated.ClienteId }, clientDtoCreated);
         }
 
         [HttpPut]
-        public ActionResult Put(int id, Cliente cliente) 
+        public ActionResult Put(int id, ClienteDTO clientDto) 
         {
 
             _logger.LogInformation($"======== CLIENTE ATUALICADO! = {id} ============");
             _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
             _logger.LogInformation($"Horário: {DateTime.Now}");
-
-            if (cliente == null || id != cliente.ClienteId)
+        
+            if (clientDto == null || id != clientDto.ClienteId)
             {
                 _logger.LogInformation($"======== CLIENTE COM PROBLEMA! = {id} ============");
                 _logger.LogInformation($"=====  Status Code: {HttpContext.Response.StatusCode} =====");
@@ -132,9 +146,10 @@ namespace APIBookstore.Controllers
                 return BadRequest("Verifique os dados.");
             }
 
-            _unitOfWork.ClientRepository.Update(cliente);
+            var client = _mapper.Map<Cliente>(clientDto);
+            _unitOfWork.ClientRepository.Update(client);
             _unitOfWork.Commit();
-
+            
             return Ok("Cliente modoficado!!!");
         }
 
