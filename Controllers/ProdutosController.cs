@@ -1,10 +1,12 @@
-﻿using APIBookstore.Context;
+﻿using System.Text.Json;
+using APIBookstore.Context;
 using APIBookstore.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
 using APIBookstore.DTOs;
+using APIBookstore.Pagination;
 using APIBookstore.Repositories;
 using AutoMapper;
 using Microsoft.AspNetCore.JsonPatch;
@@ -52,6 +54,26 @@ namespace APIBookstore.Controllers
             var productsDto = _mapper.Map<IEnumerable<ProdutoDTO>>(products);
             
             return (productsDto.Any()) ? Ok(productsDto) : BadRequest($"Não há produto que contém o nome {nome}");
+        }
+
+        [HttpGet("Pagination")]
+        public async Task<ActionResult<IEnumerable<ProdutoDTO>>> GetPaginationAsync([FromQuery] QueryParameters parameters)
+        {
+            var productsPagination = await _unitOfWork.ProductRepository.GetProductPaginationAsync(parameters);
+
+            var metadata = new
+            {
+                productsPagination.CurrentPage,
+                productsPagination.TotalCount,
+                productsPagination.TotalPages,
+                productsPagination.ItemsPerPage,
+                productsPagination.HasPrevious,
+                productsPagination.HasNext
+            };
+
+            Response.Headers.Append("X-Products", JsonSerializer.Serialize(metadata));
+
+            return Ok(_mapper.Map<IEnumerable<ProdutoDTO>>(productsPagination));
         }
 
         [HttpPost]

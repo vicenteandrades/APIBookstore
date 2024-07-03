@@ -1,5 +1,6 @@
 ﻿using APIBookstore.Context;
 using APIBookstore.Models;
+using APIBookstore.Pagination;
 using APIBookstore.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,9 +16,18 @@ public class ProductRepository : BaseRepository<Produto>,IFindService<Produto>, 
         {
             var list = await _context.Produtos.ToListAsync();
 
-            var product = list.Where(x => x.Name.ToLower().Contains(model.ToLower()));
+            var product = list.Where(x => x.Name.Contains(model));
             return product;
         }
+
+        public async Task<PagedList<Produto>> GetProductPaginationAsync(QueryParameters parameters)
+        {
+            var list = await _context.Produtos.ToListAsync();
+
+            return PagedList<Produto>.ToPagedList(list.AsQueryable(), parameters.Page, parameters.ItemsPerPage);
+
+        }
+
 
         public Produto GetProduct(int id)
         {
